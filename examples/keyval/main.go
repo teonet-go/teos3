@@ -16,11 +16,6 @@ const (
 	appVersion = teos3.Version
 )
 
-// const (
-// 	bucket = "tst"
-// 	object = "teotun.jpeg"
-// )
-
 var (
 	accessKey = os.Getenv("TEOS3_ACCESSKEY")
 	secretKey = os.Getenv("TEOS3_SECRETKEY")
@@ -85,7 +80,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	for _, key := range list {
-		fmt.Println(" ",key)
+		fmt.Println(" ", key)
 	}
 
 	// Get keys from list asynchronously
@@ -109,6 +104,16 @@ func main() {
 	}()
 	for data := range ch {
 		log.Println("Got data:", string(data))
+	}
+
+	// TODO: remove keys
+	log.Println("Remove keys by keys in list")
+	for _, key := range list {
+		err := con.Map.Del(key)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Println("  del", key)
 	}
 
 	log.Println("All done", time.Since(start))

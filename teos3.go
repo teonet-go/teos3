@@ -88,6 +88,15 @@ func (m *Map) Get(key string) (data []byte, err error) {
 	return
 }
 
+// Del remove key frim map by key
+func (m *Map) Del(key string) (err error) {
+	err = m.con.RemoveObject(context.Background(), m.bucket, key,
+		minio.RemoveObjectOptions{},
+	)
+
+	return 
+}
+
 // Get list of map keys by prefix
 func (m *Map) List(prefix string) (list []string, err error) {
 
