@@ -106,15 +106,20 @@ func main() {
 		log.Println("Got data:", string(data))
 	}
 
-	// TODO: remove keys
+	// Remove keys by key asynchronously
 	log.Println("Remove keys by keys in list")
 	for _, key := range list {
-		err := con.Map.Del(key)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		fmt.Println("  del", key)
+		wg.Add(1)
+		go func(key string) {
+			defer wg.Done()
+			err := con.Map.Del(key)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			fmt.Println("  del", key)
+		}(key)
 	}
+	wg.Wait()
 
 	log.Println("All done", time.Since(start))
 }
