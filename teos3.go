@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"log"
+	"sync"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -48,10 +49,10 @@ type Map struct {
 }
 
 // Map data struct
-// type MapData struct {
-// 	Key   string `json:"key"`
-// 	Value []byte `json:"value"`
-// }
+type MapData struct {
+	Key   string `json:"key"`
+	Value []byte `json:"value"`
+}
 
 // Set data to map by key
 func (m *Map) Set(key string, data []byte) (err error) {
@@ -94,13 +95,33 @@ func (m *Map) Del(key string) (err error) {
 		minio.RemoveObjectOptions{},
 	)
 
-	return 
+	return
 }
 
 // Get list of map keys by prefix
-func (m *Map) List(prefix string) (list []string, err error) {
+func (m *Map) List(prefix string) (result chan string, err error) {
 
-	objInfo := m.con.ListObjects(context.Background(), m.bucket, 
+	result = make(chan string, 1)
+
+	go func() {
+		objInfo := m.con.ListObjects(context.Background(), m.bucket,
+			minio.ListObjectsOptions{
+				Prefix: prefix,
+			},
+		)
+		for obj := range objInfo {
+			result <- obj.Key
+		}
+		close(result)
+	}()
+
+	return
+}
+
+// Get string array of map keys by prefix
+func (m *Map) ListAr(prefix string) (list []string, err error) {
+
+	objInfo := m.con.ListObjects(context.Background(), m.bucket,
 		minio.ListObjectsOptions{
 			Prefix: prefix,
 		},
@@ -108,6 +129,39 @@ func (m *Map) List(prefix string) (list []string, err error) {
 	for obj := range objInfo {
 		list = append(list, obj.Key)
 	}
+
+	return
+}
+
+// ListBody get all keys values by prefix asynchronously
+func (m *Map) ListBody(prefix string) (result chan MapData, err error) {
+
+	result = make(chan MapData, 1)
+
+	objInfo := m.con.ListObjects(context.Background(), m.bucket,
+		minio.ListObjectsOptions{
+			Prefix: prefix,
+		},
+	)
+
+	var wg sync.WaitGroup
+	for obj := range objInfo {
+
+		wg.Add(1)
+		go func(obj minio.ObjectInfo) {
+			data, err := m.Get(obj.Key)
+			if err != nil {
+				return
+			}
+			result <- MapData{obj.Key, data}
+			wg.Done()
+		}(obj)
+
+	}
+	go func() {
+		wg.Wait()
+		close(result)
+	}()
 
 	return
 }

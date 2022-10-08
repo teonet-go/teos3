@@ -52,42 +52,48 @@ func main() {
 	}
 
 	// Set and Get records as Key Value
-	const num = 100
-	log.Println("Set and Get records")
+	var wg sync.WaitGroup
+	const num = 10
+	const prefix = "/test/key-"
+	log.Println("Set and Get records:")
 	for i := 1; i <= num; i++ {
 		// Key values to set and get
-		key01 := fmt.Sprintf("/test/key-%02d", i)
-		data01 := []byte(fmt.Sprintf("Hello %02d from TeoS3 Map!", i))
+		wg.Add(1)
+		go func(i int) {
+			key := fmt.Sprintf(prefix+"%02d", i)
+			data := []byte(fmt.Sprintf("Hello %02d from TeoS3 Map!", i))
 
-		// Set key to TeoS3 Map
-		con.Map.Set(key01, data01)
-		if err != nil {
-			log.Fatalln(err)
-		}
+			// Set key to TeoS3 Map
+			con.Map.Set(key, data)
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-		// Get key from TeoS3 Map
-		data, err := con.Map.Get(key01)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		log.Println("Got data:", string(data))
+			// Get key from TeoS3 Map
+			data, err := con.Map.Get(key)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			log.Println("Got data:", string(data))
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
 
 	// Get list of keys and print it
-	log.Println("Get list of keys")
-	list, err := con.Map.List("/test/key-")
+	log.Println("Get list of keys:")
+	list, err := con.Map.List(prefix)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	for _, key := range list {
-		fmt.Println(" ", key)
-	}
+	// for _, key := range list {
+	// 	fmt.Println(" ", key)
+	// }
 
 	// Get keys from list asynchronously
-	log.Println("Get keys from list asynchronously")
-	var wg sync.WaitGroup
-	var ch = make(chan []byte, num)
-	for _, key := range list {
+	log.Println("Get keys from list asynchronously:")
+	var ch = make(chan teos3.MapData, num)
+	for key := range list {
 		wg.Add(1)
 		go func(key string) {
 			defer wg.Done()
@@ -95,20 +101,40 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
-			ch <- data
+			ch <- teos3.MapData{Key: key, Value: data}
 		}(key)
 	}
 	go func() {
 		wg.Wait()
 		close(ch)
 	}()
-	for data := range ch {
-		log.Println("Got data:", string(data))
+	for m := range ch {
+		log.Println("Got data:", m.Key, string(m.Value))
+	}
+
+	// Get list of keys and values
+	log.Println("Get list of keys and values:")
+	mapData, err := con.Map.ListBody(prefix)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// i := 0
+	for m := range mapData {
+		log.Println(m.Key, string(m.Value))
+		// if i > 1 {
+		// 	close(mapData)
+		// 	break
+		// }
+		// i++
 	}
 
 	// Remove keys by key asynchronously
-	log.Println("Remove keys by keys in list")
-	for _, key := range list {
+	log.Println("Remove keys by keys in list:")
+	list, err = con.Map.List(prefix)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for key := range list {
 		wg.Add(1)
 		go func(key string) {
 			defer wg.Done()
