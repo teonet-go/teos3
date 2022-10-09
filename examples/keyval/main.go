@@ -118,15 +118,12 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// i := 0
 	for m := range mapData {
 		log.Println(m.Key, string(m.Value))
-		// if i > 1 {
-		// 	close(mapData)
-		// 	break
-		// }
-		// i++
 	}
+
+	// Temporaly skip remove keys
+	// return
 
 	// Remove keys by key asynchronously
 	log.Println("Remove keys by keys in list:")

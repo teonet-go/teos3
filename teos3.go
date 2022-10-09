@@ -18,7 +18,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Version = "0.0.1"
+const Version = "0.0.2"
 
 const teoS3bucket = "teos3"
 
@@ -99,9 +99,9 @@ func (m *Map) Del(key string) (err error) {
 }
 
 // Get list of map keys by prefix
-func (m *Map) List(prefix string) (result chan string, err error) {
+func (m *Map) List(prefix string) (keys chan string, err error) {
 
-	result = make(chan string, 1)
+	keys = make(chan string, 1)
 
 	go func() {
 		objInfo := m.con.ListObjects(context.Background(), m.bucket,
@@ -110,9 +110,9 @@ func (m *Map) List(prefix string) (result chan string, err error) {
 			},
 		)
 		for obj := range objInfo {
-			result <- obj.Key
+			keys <- obj.Key
 		}
-		close(result)
+		close(keys)
 	}()
 
 	return
@@ -134,9 +134,9 @@ func (m *Map) ListAr(prefix string) (list []string, err error) {
 }
 
 // ListBody get all keys values by prefix asynchronously
-func (m *Map) ListBody(prefix string) (result chan MapData, err error) {
+func (m *Map) ListBody(prefix string) (mapDatas chan MapData, err error) {
 
-	result = make(chan MapData, 1)
+	mapDatas = make(chan MapData, 1)
 
 	objInfo := m.con.ListObjects(context.Background(), m.bucket,
 		minio.ListObjectsOptions{
@@ -153,14 +153,14 @@ func (m *Map) ListBody(prefix string) (result chan MapData, err error) {
 			if err != nil {
 				return
 			}
-			result <- MapData{obj.Key, data}
+			mapDatas <- MapData{obj.Key, data}
 			wg.Done()
 		}(obj)
 
 	}
 	go func() {
 		wg.Wait()
-		close(result)
+		close(mapDatas)
 	}()
 
 	return
