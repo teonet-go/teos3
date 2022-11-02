@@ -21,7 +21,7 @@ import (
 // Application constants
 const (
 	appName    = "s3cp"
-	appVersion = "0.0.1"
+	appVersion = teos3.Version
 )
 
 // S3 access variables
