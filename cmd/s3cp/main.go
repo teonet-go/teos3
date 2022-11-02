@@ -2,7 +2,35 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// The s3cp copy file to/from S3 storage
+// The s3cp application copy file to/from S3 storage.
+//
+// This application send logs to syslog. To read curent log messages in
+// archlinux use `journalctl -f` command.
+//
+// The S3 storage credintals may be set in application parameters or in
+// environment variables:
+//
+//	TEOS3_ACCESSKEY
+//	TEOS3_SECRETKEY
+//	TEOS3_ENDPOINT
+//	TEOS3_BUCKET
+//
+// Parameter and arguments usage:
+// s3cp [OPTION] source target
+// use s3:/folder_and_object_name to define S3 in source or target
+//
+// Usage of /tmp/go-build1982013444/b001/exe/s3cp:
+//
+//	-accesskey string
+//	   S3 storage Access key
+//	-bucket string
+//	   S3 storage Bucket
+//	-endpoint string
+//	   S3 storage Endpoint
+//	-secretkey string
+//	   S3 storage Secret key
+//	-secure
+//	   set secure=false to enable insecure (HTTP) access (default true)
 package main
 
 import (
