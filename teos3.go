@@ -40,7 +40,7 @@ func Connect(accessKey, secretKey, endpoint string, secure bool, buckets ...stri
 	}
 
 	var bucket = teoS3bucket
-	if len(buckets) > 0 {
+	if len(buckets) > 0 && len(buckets[0]) > 0 {
 		bucket = buckets[0]
 	}
 	teos3.Map = &Map{teos3.con, bucket}
