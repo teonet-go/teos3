@@ -29,7 +29,7 @@ type TeoS3 struct {
 }
 
 // Connect to teonet S3 storage
-func Connect(accessKey, secretKey, endpoint string, secure bool) (teos3 *TeoS3, err error) {
+func Connect(accessKey, secretKey, endpoint string, secure bool, buckets ...string) (teos3 *TeoS3, err error) {
 	teos3 = new(TeoS3)
 	teos3.con, err = minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
@@ -38,7 +38,12 @@ func Connect(accessKey, secretKey, endpoint string, secure bool) (teos3 *TeoS3, 
 	if err != nil {
 		log.Fatalln(err)
 	}
-	teos3.Map = &Map{teos3.con, teoS3bucket}
+
+	var bucket = teoS3bucket
+	if len(buckets) > 0 {
+		bucket = buckets[0]
+	}
+	teos3.Map = &Map{teos3.con, bucket}
 	return
 }
 
