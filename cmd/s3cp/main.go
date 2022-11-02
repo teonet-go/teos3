@@ -6,8 +6,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"log/syslog"
 	"os"
@@ -37,6 +39,7 @@ const (
 
 func main() {
 
+	// Set log otput to syslog
 	sysLog, err := syslog.New(syslog.LOG_INFO|syslog.LOG_LOCAL7, appName)
 	if err != nil {
 		log.Fatalln(err)
@@ -108,7 +111,8 @@ func main() {
 	}
 
 	// Check parameters and copy file
-	var source []byte
+	var sourceObj io.Reader
+	var sourceLen int64
 	for i := range args {
 
 		// Trim and check S3 in argument
@@ -125,36 +129,68 @@ func main() {
 		logError := func(err error) {
 			log.Fatalln("error", err)
 		}
+		logSet := func(key string) {
+			log.Println("got data from", key)
+		}
+		logGet := func(key string) {
+			log.Println("set data to", key)
+		}
 
+		// Argument type
+		const (
+			Source = iota
+			Target
+		)
+
+		// Switch by argument type
 		switch i {
 
-		// Source
-		case 0:
-			if s3 {
-				// get S3 object
-				source, err = connectS3().Map.Get(key)
-			} else {
-				// get file
-				source, err = os.ReadFile(key)
-			}
-			if err != nil {
-				logError(err)
-			}
-			log.Println("got data from", args[i])
+		case Source:
 
-		// Target
-		case 1:
+			// Get S3 object
 			if s3 {
-				// save S3 object
-				err = connectS3().Map.Set(key, source)
-			} else {
-				// save file
-				err = os.WriteFile(key, source, 0644)
+				obj, err := connectS3().Map.GetObject(key)
+				if err != nil {
+					logError(err)
+				}
+				sourceObj = obj
+				objStat, _ := obj.Stat()
+				sourceLen = objStat.Size
+				logSet(args[i])
+				continue
 			}
+
+			// Get file
+			file, err := os.Open(key)
 			if err != nil {
 				logError(err)
 			}
-			log.Println("set data to", args[i])
+			defer file.Close()
+			sourceObj = bufio.NewReader(file)
+			fileStat, _ := file.Stat()
+			sourceLen = fileStat.Size()
+			logSet(args[i])
+
+		case Target:
+
+			// Save source to S3
+			if s3 {
+				err = connectS3().Map.SetObject(key, sourceObj, sourceLen)
+				if err != nil {
+					logError(err)
+				}
+				logGet(args[i])
+				continue
+			}
+
+			// Save source to file
+			fo, err := os.Create(key)
+			if err != nil {
+				logError(err)
+			}
+			bufio.NewWriter(fo).ReadFrom(sourceObj)
+			fo.Close()
+			logGet(args[i])
 		}
 	}
 }
