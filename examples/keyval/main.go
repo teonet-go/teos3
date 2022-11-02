@@ -82,18 +82,12 @@ func main() {
 
 	// Get list of keys and print it
 	log.Println("Get list of keys:")
-	list, err := con.Map.List(prefix)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	// for _, key := range list {
-	// 	fmt.Println(" ", key)
-	// }
+	keys := con.Map.List(prefix)
 
 	// Get keys from list asynchronously
 	log.Println("Get keys from list asynchronously:")
 	var ch = make(chan teos3.MapData, num)
-	for key := range list {
+	for key := range keys {
 		wg.Add(1)
 		go func(key string) {
 			defer wg.Done()
@@ -114,10 +108,7 @@ func main() {
 
 	// Get list of keys and values
 	log.Println("Get list of keys and values:")
-	mapData, err := con.Map.ListBody(prefix)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	mapData := con.Map.ListBody(prefix)
 	for m := range mapData {
 		log.Println(m.Key, string(m.Value))
 	}
@@ -127,11 +118,8 @@ func main() {
 
 	// Remove keys by key asynchronously
 	log.Println("Remove keys by keys in list:")
-	list, err = con.Map.List(prefix)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	for key := range list {
+	keys = con.Map.List(prefix)
+	for key := range keys {
 		wg.Add(1)
 		go func(key string) {
 			defer wg.Done()
