@@ -117,5 +117,5 @@ func main() {
 	}
 	log.Println("copy", args[0], "to", args[1])
 
-	teos3.Copy(accessKey, secretKey, endpoint, args, secure)
+	teos3.Copy(accessKey, secretKey, endpoint, bucket, args, secure)
 }
