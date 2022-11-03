@@ -34,14 +34,11 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"log/syslog"
 	"os"
-	"strings"
 
 	"github.com/teonet-go/teos3"
 )
@@ -120,105 +117,5 @@ func main() {
 	}
 	log.Println("copy", args[0], "to", args[1])
 
-	// Connect to teonet S3 storage
-	var connected bool
-	var teoS3conn *teos3.TeoS3
-	connectS3 := func() (con *teos3.TeoS3) {
-		if connected {
-			con = teoS3conn
-			return con
-		}
-		con, err = teos3.Connect(accessKey, secretKey, endpoint, secure)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		log.Println("connect to s3 storage")
-		connected = true
-		teoS3conn = con
-		return
-	}
-
-	// Check parameters and copy file
-	var sourceObj io.Reader
-	var sourceLen int64
-	for i := range args {
-
-		// Trim and check S3 in argument
-		args[i] = strings.Trim(args[i], " \t")
-		s3 := strings.Index(args[i], "s3:") == 0
-		var key string
-		if s3 {
-			key = args[i][3:]
-		} else {
-			key = args[i]
-		}
-
-		// Log error function
-		logError := func(err error) {
-			log.Fatalln("error", err)
-		}
-		logSet := func(key string) {
-			log.Println("got data from", key)
-		}
-		logGet := func(key string) {
-			log.Println("set data to", key)
-		}
-
-		// Argument type
-		const (
-			Source = iota
-			Target
-		)
-
-		// Switch by argument type
-		switch i {
-
-		case Source:
-
-			// Get S3 object
-			if s3 {
-				obj, err := connectS3().Map.GetObject(key)
-				if err != nil {
-					logError(err)
-				}
-				sourceObj = obj
-				objStat, _ := obj.Stat()
-				sourceLen = objStat.Size
-				logSet(args[i])
-				continue
-			}
-
-			// Get file
-			file, err := os.Open(key)
-			if err != nil {
-				logError(err)
-			}
-			defer file.Close()
-			sourceObj = bufio.NewReader(file)
-			fileStat, _ := file.Stat()
-			sourceLen = fileStat.Size()
-			logSet(args[i])
-
-		case Target:
-
-			// Save source to S3
-			if s3 {
-				err = connectS3().Map.SetObject(key, sourceObj, sourceLen)
-				if err != nil {
-					logError(err)
-				}
-				logGet(args[i])
-				continue
-			}
-
-			// Save source to file
-			fo, err := os.Create(key)
-			if err != nil {
-				logError(err)
-			}
-			bufio.NewWriter(fo).ReadFrom(sourceObj)
-			fo.Close()
-			logGet(args[i])
-		}
-	}
+	teos3.Copy(accessKey, secretKey, endpoint, args, secure)
 }
