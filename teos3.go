@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // teos3 package contains Golang functions to rasy use AWS S3 storage as
-// KeyValue Database. 
+// KeyValue Database.
 package teos3
 
 import (

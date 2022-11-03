@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This application get s3 object and save it to local file. This sample used 
+// This application get s3 object and save it to local file. This sample used
 // minio-go package which help us create the teos3 package
 package main
 
