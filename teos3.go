@@ -3,9 +3,7 @@
 // found in the LICENSE file.
 
 // teos3 package contains Golang functions to rasy use AWS S3 storage as
-// KeyValue Database. To use it create next buckets in your S3 storage:
-//
-//	teos3/map
+// KeyValue Database. 
 package teos3
 
 import (
@@ -180,7 +178,7 @@ func (m *Map) ListBody(prefix string) (mapDatas chan MapData) {
 
 // Copy from source to target. Source or Target may be s3 storage object. Use
 // 's3:' prefix to define s3 object
-func Copy(accessKey, secretKey, endpoint string, args []string, secures ...bool) (err error) {
+func Copy(accessKey, secretKey, endpoint, bucket string, args []string, secures ...bool) (err error) {
 
 	// The secure defaul true
 	var secure = true
@@ -196,7 +194,7 @@ func Copy(accessKey, secretKey, endpoint string, args []string, secures ...bool)
 			con = teoS3conn
 			return con
 		}
-		con, err = Connect(accessKey, secretKey, endpoint, secure)
+		con, err = Connect(accessKey, secretKey, endpoint, secure, bucket)
 		if err != nil {
 			log.Fatalln(err)
 		}
