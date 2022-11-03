@@ -88,7 +88,7 @@ if err != nil {
 }
 ```
 
-You can find whall packets documentation at: <https://pkg.go.dev/github.com/teonet-go/teos3>
+You can find complete packets documentation at: <https://pkg.go.dev/github.com/teonet-go/teos3>
 
 -----------------------
 

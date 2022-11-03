@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// teos3 package contains Golang functions to rasy use AWS S3 storage as
-// KeyValue Database.
+// The TeoS3 package contains Golang features that make it easy to use S3
+// storage as a key-value database.
 package teos3
 
 import (
