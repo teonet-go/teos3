@@ -4,10 +4,10 @@
 
 // The s3cp application copy file to/from S3 storage.
 //
-// This application send logs to syslog. To read curent log messages in
+// This application send logs to syslog. To read current log messages in
 // archlinux use `journalctl -f` command.
 //
-// The S3 storage credintals may be set in application parameters or in
+// The S3 storage credentials may be set in application parameters or in
 // environment variables:
 //
 //	TEOS3_ACCESSKEY

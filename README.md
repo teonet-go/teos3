@@ -1,7 +1,7 @@
 # `TeoS3` package and `s3cp` utilite
 
-The TeoS3 package contains Golang functions to rasy use S3 storage as
-Key Value Database.
+The TeoS3 package contains Golang features that make it easy to use S3 storage
+as a key-value database.
 
 This project contain also the `s3cp` utilite which copy files from disk to s3
 storage and back
@@ -23,7 +23,7 @@ To install `s3cp` application use next command:
 
 The `s3cp` application copy file to/from S3 storage.
 
-The S3 storage credintals may be set in application parameters or in
+The S3 storage credentials may be set in application parameters or in
 environment variables:
 
     TEOS3_ACCESSKEY -- S3 storage Access key
@@ -51,7 +51,7 @@ Parameters and arguments:
 
 ### Logs
 
-The `s3cp` application send logs to syslog. To read curent log messages in
+The `s3cp` application sends logs to syslog. To read current log messages in
 `archlinux` use `journalctl -f` command.
 
 -----------------------
