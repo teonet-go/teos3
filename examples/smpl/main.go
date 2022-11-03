@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This application get s3 object and save it to local file
+// This application used teoS3 package which contains Go functions to rasy use 
+// S3 storage as Key Value Database. Use s3cp utilite to save teotun.jpeg which 
+// used in this example: 
+//   go run ./cmd/s3cp/ --bucket=tst ./examples/smpl/teotun.jpeg s3:/teotun.jpeg
 package main
 
 import (
