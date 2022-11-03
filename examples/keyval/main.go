@@ -1,3 +1,9 @@
+// Copyright 2022 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// This application get s3 object and save it to local file. This sample used 
+// minio-go package which help us create the teos3 package
 package main
 
 import (
@@ -20,6 +26,7 @@ var (
 	accessKey = os.Getenv("TEOS3_ACCESSKEY")
 	secretKey = os.Getenv("TEOS3_SECRETKEY")
 	endpoint  = os.Getenv("TEOS3_ENDPOINT")
+	bucket    = os.Getenv("TEOS3_BUCKET")
 	secure    = true
 )
 
@@ -32,6 +39,7 @@ func main() {
 	flag.StringVar(&accessKey, "accesskey", accessKey, "S3 storage Access key")
 	flag.StringVar(&secretKey, "secretkey", secretKey, "S3 storage Secret key")
 	flag.StringVar(&endpoint, "endpoint", endpoint, "S3 storage Endpoint")
+	flag.StringVar(&bucket, "bucket", bucket, "S3 storage Bucket")
 	flag.BoolVar(&secure, "secure", secure, "set secure=false to enable insecure (HTTP) access")
 
 	flag.Parse()
@@ -46,7 +54,7 @@ func main() {
 
 	// Connect to teonet S3 storage
 	log.Println("Connect")
-	con, err := teos3.Connect(accessKey, secretKey, endpoint, secure)
+	con, err := teos3.Connect(accessKey, secretKey, endpoint, secure, bucket)
 	if err != nil {
 		log.Fatalln(err)
 	}
