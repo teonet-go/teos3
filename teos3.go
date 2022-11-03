@@ -20,7 +20,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Version = "0.0.4"
+const Version = "0.0.5"
 
 const teoS3bucket = "teos3"
 
