@@ -69,14 +69,13 @@ There is a part of code with connect, set and get key value:
 
 ```go
 // Connect to S3 storage
-log.Println("Connect")
 con, err := teos3.Connect(accessKey, secretKey, endpoint, secure)
 if err != nil {
     log.Fatalln(err)
 }
 
 // Set key to teos3 Map
-con.Map.Set(key, data)
+err = con.Map.Set(key, data)
 if err != nil {
     log.Fatalln(err)
 }

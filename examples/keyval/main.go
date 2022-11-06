@@ -72,7 +72,7 @@ func main() {
 			data := []byte(fmt.Sprintf("Hello %02d from TeoS3 Map!", i))
 
 			// Set key to TeoS3 Map
-			con.Map.Set(key, data)
+			err = con.Map.Set(key, data)
 			if err != nil {
 				log.Fatalln(err)
 			}

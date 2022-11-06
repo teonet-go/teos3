@@ -20,7 +20,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Version = "0.0.5"
+const Version = "0.0.7"
 
 const teoS3bucket = "teos3"
 
@@ -101,7 +101,7 @@ func (m *Map) GetObject(key string) (obj *minio.Object, err error) {
 	return
 }
 
-// Del remove key frim map by key
+// Del remove key from map by key
 func (m *Map) Del(key string) (err error) {
 	err = m.con.RemoveObject(context.Background(), m.bucket, key,
 		minio.RemoveObjectOptions{},
