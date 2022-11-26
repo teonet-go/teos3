@@ -53,7 +53,7 @@ func main() {
 	start := time.Now()
 
 	// Connect to teonet S3 storage
-	log.Println("Connect")
+	log.Println("Connect to", endpoint)
 	con, err := teos3.Connect(accessKey, secretKey, endpoint, secure, bucket)
 	if err != nil {
 		log.Fatalln(err)
@@ -62,7 +62,7 @@ func main() {
 	// Set and Get records as Key Value
 	var wg sync.WaitGroup
 	const num = 10
-	const prefix = "/test/key-"
+	const prefix = "test/key-"
 	log.Println("Set and Get records:")
 	for i := 1; i <= num; i++ {
 		// Key values to set and get
