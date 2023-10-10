@@ -1,4 +1,4 @@
-// Copyright 2022 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
+// Copyright 2022-23 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -72,13 +72,13 @@ func main() {
 			data := []byte(fmt.Sprintf("Hello %02d from TeoS3 Map!", i))
 
 			// Set key to TeoS3 Map
-			err = con.Map.Set(key, data)
+			err = con.Set(key, data)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			// Get key from TeoS3 Map
-			data, err := con.Map.Get(key)
+			data, err := con.Get(key)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -90,7 +90,7 @@ func main() {
 
 	// Get list of keys and print it
 	log.Println("Get list of keys:")
-	keys := con.Map.List(prefix)
+	keys := con.List(prefix)
 
 	// Get keys from list asynchronously
 	log.Println("Get keys from list asynchronously:")
@@ -99,7 +99,7 @@ func main() {
 		wg.Add(1)
 		go func(key string) {
 			defer wg.Done()
-			data, err := con.Map.Get(key)
+			data, err := con.Get(key)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -116,7 +116,7 @@ func main() {
 
 	// Get list of keys and values
 	log.Println("Get list of keys and values:")
-	mapData := con.Map.ListBody(prefix)
+	mapData := con.ListBody(prefix)
 	for m := range mapData {
 		log.Println(m.Key, string(m.Value))
 	}
@@ -126,12 +126,12 @@ func main() {
 
 	// Remove keys by key asynchronously
 	log.Println("Remove keys by keys in list:")
-	keys = con.Map.List(prefix)
+	keys = con.List(prefix)
 	for key := range keys {
 		wg.Add(1)
 		go func(key string) {
 			defer wg.Done()
-			err := con.Map.Del(key)
+			err := con.Del(key)
 			if err != nil {
 				log.Fatalln(err)
 			}

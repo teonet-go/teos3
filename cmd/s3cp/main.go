@@ -1,4 +1,4 @@
-// Copyright 2022 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
+// Copyright 2022-23 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -51,8 +51,11 @@ const (
 
 // S3 access variables
 var (
-	accessKey, secretKey, endpoint, bucket string
-	secure                                 = true
+	accessKey = os.Getenv("TEOS3_ACCESSKEY")
+	secretKey = os.Getenv("TEOS3_SECRETKEY")
+	endpoint  = os.Getenv("TEOS3_ENDPOINT")
+	bucket    = os.Getenv("TEOS3_BUCKET")
+	secure    = true
 )
 
 // Application usage message
@@ -87,20 +90,6 @@ func main() {
 		fmt.Println()
 	}
 	flag.Parse()
-
-	// Set parameters from env
-	if len(accessKey) == 0 {
-		accessKey = os.Getenv("TEOS3_ACCESSKEY")
-	}
-	if len(secretKey) == 0 {
-		secretKey = os.Getenv("TEOS3_SECRETKEY")
-	}
-	if len(endpoint) == 0 {
-		endpoint = os.Getenv("TEOS3_ENDPOINT")
-	}
-	if len(bucket) == 0 {
-		bucket = os.Getenv("TEOS3_BUCKET")
-	}
 
 	// Check parameters
 	if len(accessKey) == 0 || len(secretKey) == 0 || len(endpoint) == 0 {
