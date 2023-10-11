@@ -1,22 +1,20 @@
-// Copyright 2022-23 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
+// Copyright 2023 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TeoS3 `keyval` example. There is basic example which used most of packets
-// functions. This example executes following tasks:
+// TeoS3 `keyval-opt` example. There is example which shows how to used teos3
+// packets functions with options.
+//
+// This example executes following tasks:
 //
 // - sets some numer of data records (objects) by key (objects name) to the
 // key/value db baset on s3 bucket;
 //
-// - gets list of saved data records by prefix;
+// - gets full list of saved data records by prefix;
 //
-// - gets saved data records (objects) by key (objects name) from the
-// key/value db baset on s3 bucket;
+// - gets part of list using options;
 //
-// - deletes all saved data records (objects) by key (object name) from the
-// key/value database in the s3 bucket.
-//
-// All this tasks are performed in parallel mode.
+// - deletes all saved objects.
 //
 // Fill next environment variables to run this example:
 //
@@ -25,7 +23,7 @@
 //
 // Use next command to run this example:
 //
-//	go run ./examples/keyval/
+//	go run ./examples/keyval-opts/
 package main
 
 import (
@@ -40,7 +38,7 @@ import (
 )
 
 const (
-	appName    = "Key value S3 Storage acess example"
+	appName    = "Key value S3 Storage acess example with options"
 	appVersion = teos3.Version
 )
 
@@ -81,11 +79,11 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	// Set and Get records as Key Value
+	// Set some key/value records to the S3 storage asynchronously
 	const num = 10
 	var wg sync.WaitGroup
 	const prefix = "test/key-"
-	log.Println("Set and Get records:")
+	log.Println("Set records:")
 	for i := 1; i <= num; i++ {
 		// Key values to set and get
 		wg.Add(1)
@@ -99,52 +97,32 @@ func main() {
 				log.Fatalln(err)
 			}
 
-			// Get key from TeoS3 Map
-			data, err := con.Get(key)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			log.Println("Got data:", string(data))
+			log.Println("Set data:", string(data))
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
 
-	// Get list of keys and print it
-	log.Println("Get list of keys:")
-	keys := con.List(prefix)
-
-	// Get keys from list asynchronously
-	log.Println("Get keys from list asynchronously:")
-	var ch = make(chan teos3.MapData, num)
+	// Set list options and Get part of list using ListOptions
+	opt := *new(teos3.ListOptions).SetMaxKeys(3).SetStartAfter("test/key-03")
+	log.Println("Get part of list using ListObjectsOptions:")
+	fmt.Printf("List options: start after: %s, num keys: %d\n",
+		opt.StartAfter, opt.MaxKeys,
+	)
+	keys := con.List(prefix, opt)
 	for key := range keys {
-		wg.Add(1)
-		go func(key string) {
-			defer wg.Done()
-			data, err := con.Get(key)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			ch <- teos3.MapData{Key: key, Value: data}
-		}(key)
-	}
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-	for m := range ch {
-		log.Println("Got data:", m.Key, string(m.Value))
+		fmt.Println("  key", key)
 	}
 
-	// Get list of keys and values
-	log.Println("Get list of keys and values:")
-	mapData := con.ListBody(prefix)
-	for m := range mapData {
-		log.Println(m.Key, string(m.Value))
-	}
-
-	// Temporaly skip remove keys
-	// return
+	// Set record with options
+	// setopt := *new(teos3.SetOptions).SetRetainUntilDate(time.Now().UTC().Add(time.Hour * 48))
+	// const extraKey = "extra-key"
+	// err = con.Set(extraKey, []byte("some data"), setopt)
+	// fmt.Println("set extra key:", err)
+	// //time.Sleep(2 * time.Second)
+	// data, err := con.Get(extraKey)
+	// fmt.Println("get extra key:", data, err)
+	// con.Del(extraKey)
 
 	// Remove keys by prefix asynchronously
 	log.Println("Get list by prefix and remove all keys by lists keys:")

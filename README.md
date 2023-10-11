@@ -17,7 +17,9 @@ storage and back
 
 To install `s3cp` application use next command:
 
-    go install github.com/teonet-go/teos3/cmd/s3cp
+```shell
+go install github.com/teonet-go/teos3/cmd/s3cp
+```
 
 ### Description
 
@@ -26,28 +28,32 @@ The `s3cp` application copy file to/from S3 storage.
 The S3 storage credentials may be set in application parameters or in
 environment variables:
 
-    TEOS3_ACCESSKEY -- S3 storage Access key
-    TEOS3_SECRETKEY -- S3 storage Secret key
-    TEOS3_ENDPOINT  -- S3 storage Endpoint
-    TEOS3_BUCKET    -- S3 storage Bucket
+```shell
+TEOS3_ACCESSKEY -- S3 storage Access key
+TEOS3_SECRETKEY -- S3 storage Secret key
+TEOS3_ENDPOINT  -- S3 storage Endpoint
+TEOS3_BUCKET    -- S3 storage Bucket
+```
 
 Parameters and arguments:
 
-    s3cp [OPTION] source target
-    use s3:/folder_and_object_name to define S3 in source or target
+```shell
+s3cp [OPTION] source target
+use s3:/folder_and_object_name to define S3 in source or target
 
-    Usage of /tmp/go-build1982013444/b001/exe/s3cp:
+Usage of /tmp/go-build1982013444/b001/exe/s3cp:
 
-    -accesskey string
-      S3 storage Access key
-    -bucket string
-      S3 storage Bucket
-    -endpoint string
-      S3 storage Endpoint
-    -secretkey string
-      S3 storage Secret key
-    -secure
-      set secure=false to enable insecure (HTTP) access (default true)
+-accesskey string
+  S3 storage Access key
+-bucket string
+  S3 storage Bucket
+-endpoint string
+  S3 storage Endpoint
+-secretkey string
+  S3 storage Secret key
+-secure
+  set secure=false to enable insecure (HTTP) access (default true)
+```
 
 ### Logs
 
@@ -59,11 +65,37 @@ The `s3cp` application sends logs to syslog. To read current log messages in
 ## `TeoS3` package description
 
 The `teos3` package contains Golang functions to rasy use S3 storage as
-KeyValue Database.
+KeyValue Database. There is functions to Set, Get, GetList using string key with any data value.
 
-There is functions to Set, Get, GetList using string key with any data value. There is basic example [keyval](examples/keyval/main.go) which used most of packets functions. Use next command to run this example:
+You can find complete packets documentation at: <https://pkg.go.dev/github.com/teonet-go/teos3>
 
-    go run ./examples/keyval/
+### The `keyval` example
+
+There is basic [keyval](examples/keyval/main.go) example which used most of packets functions.
+
+This example executes following tasks:
+
+- sets some numer of data records (objects) by key (objects name) to the key/value db baset on s3 bucket;
+
+- gets list of saved data records by prefix;
+
+- gets some numer of data records (objects) by key (objects name) to the key/value db baset on s3 bucket;
+
+- deletes all saved data records (objects) by key (object name) from the key/value database in the s3 bucket.
+
+All this tasks are performed in parallel mode.
+
+Fill next environment variables to run this example:
+
+```shell
+export TEOS3_ACCESSKEY=YOUR_ACCESSKEY TEOS3_SECRETKEY=YOUR_SECRETKEY TEOS3_ENDPOINT=YOUR_GATEWAT TEOS3_BUCKET=YOUR_BUCKET
+```
+
+Use next command to run this example:
+
+```shell
+go run ./examples/keyval/
+```
 
 There is a part of code with connect, set and get key value:
 
@@ -86,8 +118,6 @@ if err != nil {
     log.Fatalln(err)
 }
 ```
-
-You can find complete packets documentation at: <https://pkg.go.dev/github.com/teonet-go/teos3>
 
 -----------------------
 

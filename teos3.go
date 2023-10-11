@@ -31,11 +31,6 @@ type TeoS3 struct {
 	bucket string
 }
 
-// TeoS3Options is TeoS3 commands options
-type TeoS3Options struct {
-	context.Context
-}
-
 // Connect creates new cinnwction to S3 storage using accessKey, secretKey,
 // endpoint, secure flag and bucket (if ommited then default 'teos3' buckets
 // name used). The enpoind argument must be specified without http/https
@@ -60,17 +55,10 @@ func Connect(accessKey, secretKey, endpoint string, secure bool,
 	return
 }
 
-// SetObjectOptions contains context.Context and options specified by user for
-// Set requests
-type SetObjectOptions struct {
-	context.Context
-	minio.PutObjectOptions
-}
-
 // Set sets data to map by key. The options parameter may be ommited and
 // than default SetObjectOptions with context.Background and empty
 // minio.PutObjectOptions used.
-func (m *TeoS3) Set(key string, data []byte, options ...SetObjectOptions) error {
+func (m *TeoS3) Set(key string, data []byte, options ...SetOptions) error {
 	return m.SetObject(key, bytes.NewReader(data), int64(len(data)), options...)
 }
 
@@ -78,38 +66,24 @@ func (m *TeoS3) Set(key string, data []byte, options ...SetObjectOptions) error 
 // than default SetObjectOptions with context.Background and empty
 // minio.PutObjectOptions used.
 func (m *TeoS3) SetObject(key string, reader io.Reader, objectSize int64,
-	options ...SetObjectOptions) (err error) {
+	options ...SetOptions) (err error) {
 
 	// Set options
-	var opt *SetObjectOptions
-	if len(options) > 0 {
-		opt = &options[0]
-	} else {
-		opt = &SetObjectOptions{
-			Context:          context.Background(),
-			PutObjectOptions: minio.PutObjectOptions{},
-		}
-	}
+	opt := m.getSetOptions(options...)
 
 	_, err = m.con.PutObject(opt.Context, m.bucket, key, reader, objectSize,
-		opt.PutObjectOptions,
+		minio.PutObjectOptions(opt.SetObjectOptions),
 	)
 	return
-}
-
-// GetObjectOptions contains context.Context and options are used to specify
-// additional headers or options during GET requests.
-type GetObjectOptions struct {
-	context.Context
-	minio.GetObjectOptions
 }
 
 // Get map data by key. The options parameter may be ommited and than default
 // GetObjectOptions with context.Background and empty minio.SetObjectOptions
 // used.
-func (m *TeoS3) Get(key string, options ...GetObjectOptions) (
+func (m *TeoS3) Get(key string, options ...GetOptions) (
 	data []byte, err error) {
 
+	// Get object
 	obj, err := m.GetObject(key, options...)
 	if err != nil {
 		return
@@ -118,7 +92,11 @@ func (m *TeoS3) Get(key string, options ...GetObjectOptions) (
 
 	// Read from raw object
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(obj)
+	_, err = buf.ReadFrom(obj)
+	if err != nil {
+		return
+	}
+
 	data = buf.Bytes()
 
 	return
@@ -127,53 +105,26 @@ func (m *TeoS3) Get(key string, options ...GetObjectOptions) (
 // Get map object by key. The options parameter may be ommited and than default
 // GetObjectOptions with context.Background and empty minio.SetObjectOptions
 // used.
-func (m *TeoS3) GetObject(key string, options ...GetObjectOptions) (
+func (m *TeoS3) GetObject(key string, options ...GetOptions) (
 	*minio.Object, error) {
 
 	// Set options
-	var opt *GetObjectOptions
-	if len(options) > 0 {
-		opt = &options[0]
-	} else {
-		opt = &GetObjectOptions{
-			Context:          context.Background(),
-			GetObjectOptions: minio.GetObjectOptions{},
-		}
-	}
+	opt := m.getGetOptions(options...)
 
-	return m.con.GetObject(opt.Context, m.bucket, key, opt.GetObjectOptions)
-}
-
-// DelObjectOptions contains context.Context and options for Remove
-// requests.
-type DelObjectOptions struct {
-	context.Context
-	minio.RemoveObjectOptions
+	return m.con.GetObject(opt.Context, m.bucket, key,
+		minio.GetObjectOptions(opt.GetObjectOptions))
 }
 
 // Del remove key from map by key. The options parameter may be ommited and than
 // default DelObjectOptions with context.Background and empty
 // minio.RemoveObjectOptions used.
-func (m *TeoS3) Del(key string, options ...DelObjectOptions) (err error) {
+func (m *TeoS3) Del(key string, options ...DelOptions) (err error) {
 
 	// Set options
-	var opt *DelObjectOptions
-	if len(options) > 0 {
-		opt = &options[0]
-	} else {
-		opt = &DelObjectOptions{
-			Context:             context.Background(),
-			RemoveObjectOptions: minio.RemoveObjectOptions{},
-		}
-	}
+	opt := m.getDelOptions(options...)
 
-	return m.con.RemoveObject(opt.Context, m.bucket, key, opt.RemoveObjectOptions)
-}
-
-// ListObjectsOptions contains context.Context and options for List requests.
-type ListObjectsOptions struct {
-	context.Context
-	minio.ListObjectsOptions
+	return m.con.RemoveObject(opt.Context, m.bucket, key,
+		minio.RemoveObjectOptions(opt.DelObjectOptions))
 }
 
 // List gets list of map keys by prefix. The options parameter may be ommited
@@ -181,7 +132,7 @@ type ListObjectsOptions struct {
 // minio.ListObjectsOptions used. The Prefix parameter of the ListObjectsOptions
 // will be always overwritten with the prefix functions argument (so it may be
 // empty).
-func (m *TeoS3) List(prefix string, options ...ListObjectsOptions) (keys chan string) {
+func (m *TeoS3) List(prefix string, options ...ListOptions) (keys chan string) {
 
 	// Get options from prefix and input options arguments
 	opt := m.getListOptions(prefix, options...)
@@ -189,9 +140,17 @@ func (m *TeoS3) List(prefix string, options ...ListObjectsOptions) (keys chan st
 	// Get keys
 	keys = make(chan string, 1)
 	go func() {
-		objInfo := m.con.ListObjects(opt.Context, m.bucket, opt.ListObjectsOptions)
+		var i int
+
+		objInfo := m.con.ListObjects(opt.Context, m.bucket,
+			minio.ListObjectsOptions(opt.ListObjectsOptions))
+
 		for obj := range objInfo {
+			if opt.MaxKeys > 0 && i >= opt.MaxKeys {
+				break
+			}
 			keys <- obj.Key
+			i++
 		}
 		close(keys)
 	}()
@@ -200,13 +159,15 @@ func (m *TeoS3) List(prefix string, options ...ListObjectsOptions) (keys chan st
 }
 
 // ListAr gets string array of map keys by prefix.
-func (m *TeoS3) ListAr(prefix string, options ...ListObjectsOptions) (
+func (m *TeoS3) ListAr(prefix string, options ...ListOptions) (
 	list []string) {
 
 	// Get options from prefix and input options arguments
 	opt := m.getListOptions(prefix, options...)
 
-	objInfo := m.con.ListObjects(opt.Context, m.bucket, opt.ListObjectsOptions)
+	objInfo := m.con.ListObjects(opt.Context, m.bucket,
+		minio.ListObjectsOptions(opt.ListObjectsOptions))
+
 	for obj := range objInfo {
 		list = append(list, obj.Key)
 	}
@@ -252,20 +213,112 @@ func (m *TeoS3) ListBody(prefix string) (mapDatas chan MapData) {
 	return
 }
 
-// getListOptions returns ListObjectsOptions created from input prefix and
-// options arguments.
-func (m *TeoS3) getListOptions(prefix string, options ...ListObjectsOptions) (
-	opt *ListObjectsOptions) {
+// SetOptions contains context.Context and options specified by user for
+// Set requests
+type SetOptions struct {
+	context.Context
+	SetObjectOptions
+}
+type SetObjectOptions minio.PutObjectOptions
 
+// getSetOptions returns SetOptions created from input options arguments.
+func (m *TeoS3) getSetOptions(options ...SetOptions) (
+	opt *SetOptions) {
+
+	opt = &SetOptions{}
 	if len(options) > 0 {
 		opt = &options[0]
-	} else {
-		opt = &ListObjectsOptions{
-			Context:            context.Background(),
-			ListObjectsOptions: minio.ListObjectsOptions{},
-		}
+	}
+
+	if opt.Context == nil {
+		opt.Context = context.Background()
+	}
+
+	return
+}
+
+// GetOptions contains context.Context and options are used to specify
+// additional headers or options during GET requests.
+type GetOptions struct {
+	context.Context
+	GetObjectOptions
+}
+type GetObjectOptions minio.GetObjectOptions
+
+// getGetOptions returns GetOptions created from input options arguments.
+func (m *TeoS3) getGetOptions(options ...GetOptions) (
+	opt *GetOptions) {
+
+	opt = &GetOptions{}
+	if len(options) > 0 {
+		opt = &options[0]
+	}
+
+	if opt.Context == nil {
+		opt.Context = context.Background()
+	}
+
+	return
+}
+
+// DelOptions contains context.Context and options for Remove
+// requests.
+type DelOptions struct {
+	context.Context
+	DelObjectOptions
+}
+type DelObjectOptions minio.RemoveObjectOptions
+
+// getDelOptions returns DelOptions created from input options arguments.
+func (m *TeoS3) getDelOptions(options ...DelOptions) (
+	opt *DelOptions) {
+
+	opt = &DelOptions{}
+	if len(options) > 0 {
+		opt = &options[0]
+	}
+
+	if opt.Context == nil {
+		opt.Context = context.Background()
+	}
+
+	return
+}
+
+// ListOptions contains context.Context and options for List requests.
+type ListOptions struct {
+	context.Context
+	ListObjectsOptions
+}
+type ListObjectsOptions minio.ListObjectsOptions
+
+// SetMaxKeys sets MaxKeys list options value
+func (l *ListOptions) SetMaxKeys(maxKeys int) *ListOptions {
+	l.ListObjectsOptions.MaxKeys = maxKeys
+	return l
+}
+
+// SetStartAfter sets StartAfter list options value
+func (l *ListOptions) SetStartAfter(startAfter string) *ListOptions {
+	l.ListObjectsOptions.StartAfter = startAfter
+	return l
+}
+
+// getListOptions returns ListObjectsOptions created from input prefix and
+// options arguments.
+func (m *TeoS3) getListOptions(prefix string, options ...ListOptions) (
+	opt *ListOptions) {
+
+	opt = &ListOptions{}
+	if len(options) > 0 {
+		opt = &options[0]
+	}
+
+	if opt.Context == nil {
+		opt.Context = context.Background()
 	}
 	opt.Prefix = prefix
+
 	return
 }
 
