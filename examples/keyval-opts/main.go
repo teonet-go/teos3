@@ -104,10 +104,11 @@ func main() {
 	wg.Wait()
 
 	// Set list options and Get part of list using ListOptions
-	opt := *new(teos3.ListOptions).SetMaxKeys(3).SetStartAfter("test/key-03")
+	opt := con.NewListOptions().SetMaxKeys(3).SetStartAfter("test/key-03")
 	log.Println("Get part of list using ListObjectsOptions:")
-	fmt.Printf("List options: start after: %s, num keys: %d\n",
-		opt.StartAfter, opt.MaxKeys,
+	fmt.Printf(
+		"Using list options on list len %d, start after: %s, num keys: %d\n",
+		con.ListLen(prefix), opt.StartAfter, opt.MaxKeys,
 	)
 	keys := con.List(prefix, opt)
 	for key := range keys {

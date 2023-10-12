@@ -147,7 +147,7 @@ func main() {
 	// return
 
 	// Remove keys by prefix asynchronously
-	log.Println("Get list by prefix and remove all keys by lists keys:")
+	log.Println("Get list of keys and remove all added keys:")
 	keys = con.List(prefix)
 	for key := range keys {
 		wg.Add(1)
