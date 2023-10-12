@@ -17,7 +17,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Version = "0.1.0"
+const Version = "0.1.1"
 
 const teoS3bucket = "teos3"
 
@@ -29,7 +29,7 @@ type TeoS3 struct {
 }
 
 // Connect creates new cinnwction to S3 storage using accessKey, secretKey,
-// endpoint, secure flag and bucket (if ommited then default 'teos3' buckets
+// endpoint, secure flag and bucket (if omitted then default 'teos3' buckets
 // name used). The enpoind argument must be specified without http/https
 // prefix(just domain and path), and the secure argument defines HTTPS if true
 // or HTTP if false.
@@ -60,14 +60,14 @@ func (m *TeoS3) SetContext(ctx context.Context) *TeoS3 {
 	return m
 }
 
-// Set sets data to map by key. The options parameter may be ommited and
+// Set sets data to map by key. The options parameter may be omitted and
 // than default SetObjectOptions with context.Background and empty
 // minio.PutObjectOptions used.
 func (m *TeoS3) Set(key string, data []byte, options ...*SetOptions) error {
 	return m.SetObject(key, bytes.NewReader(data), int64(len(data)), options...)
 }
 
-// SetObject sets object to map by key. The options parameter may be ommited
+// SetObject sets object to map by key. The options parameter may be omitted
 // and than default SetObjectOptions with context.Background and empty
 // minio.PutObjectOptions used.
 func (m *TeoS3) SetObject(key string, reader io.Reader, objectSize int64,
@@ -82,7 +82,7 @@ func (m *TeoS3) SetObject(key string, reader io.Reader, objectSize int64,
 	return
 }
 
-// Get map data by key. The options parameter may be ommited and than default
+// Get map data by key. The options parameter may be omitted and than default
 // GetObjectOptions with context.Background and empty minio.SetObjectOptions
 // used.
 func (m *TeoS3) Get(key string, options ...*GetOptions) (
@@ -107,7 +107,7 @@ func (m *TeoS3) Get(key string, options ...*GetOptions) (
 	return
 }
 
-// Get map object by key. The options parameter may be ommited and than default
+// Get map object by key. The options parameter may be omitted and than default
 // GetObjectOptions with context.Background and empty minio.SetObjectOptions
 // used. Returned object must be cloused with obj.Close() after use.
 func (m *TeoS3) GetObject(key string, options ...*GetOptions) (
@@ -120,7 +120,7 @@ func (m *TeoS3) GetObject(key string, options ...*GetOptions) (
 		minio.GetObjectOptions(opt.GetObjectOptions))
 }
 
-// Del remove key from map by key. The options parameter may be ommited and than
+// Del remove key from map by key. The options parameter may be omitted and than
 // default DelObjectOptions with context.Background and empty
 // minio.RemoveObjectOptions used.
 func (m *TeoS3) Del(key string, options ...*DelOptions) (err error) {
@@ -151,7 +151,7 @@ func (m *TeoS3) ListLen(prefix string, options ...*ListOptions) int {
 	return i
 }
 
-// List gets list of map keys by prefix. The options parameter may be ommited
+// List gets list of map keys by prefix. The options parameter may be omitted
 // and than default ListObjectsOptions with context.Background and empty
 // minio.ListObjectsOptions used. The Prefix parameter of the ListObjectsOptions
 // will be always overwritten with the prefix functions argument (so it may be
