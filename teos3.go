@@ -17,7 +17,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Version = "0.1.1"
+const Version = "0.1.2"
 
 const teoS3bucket = "teos3"
 
@@ -107,9 +107,10 @@ func (m *TeoS3) Get(key string, options ...*GetOptions) (
 	return
 }
 
-// Get map object by key. The options parameter may be omitted and than default
-// GetObjectOptions with context.Background and empty minio.SetObjectOptions
-// used. Returned object must be cloused with obj.Close() after use.
+// GetObject gets map object by key. The options parameter may be omitted and
+// than default GetObjectOptions with context.Background and empty minio.
+// SetObjectOptions used. Returned object must be cloused with obj.Close()
+// after use.
 func (m *TeoS3) GetObject(key string, options ...*GetOptions) (
 	*minio.Object, error) {
 
@@ -118,6 +119,17 @@ func (m *TeoS3) GetObject(key string, options ...*GetOptions) (
 
 	return m.con.GetObject(opt.Context, m.bucket, key,
 		minio.GetObjectOptions(opt.GetObjectOptions))
+}
+
+// GetInfo fetchs metadata of an object by key.
+func (m *TeoS3) GetInfo(key string, options ...*GetInfoOptions) (
+	minio.ObjectInfo, error) {
+
+	// Set options
+	opt := m.getGetInfoOptions(options...)
+
+	return m.con.StatObject(opt.Context, m.bucket, key,
+		minio.StatObjectOptions(opt.StatObjectOptions))
 }
 
 // Del remove key from map by key. The options parameter may be omitted and than
@@ -294,6 +306,33 @@ func (m *TeoS3) getGetOptions(options ...*GetOptions) (
 	opt *GetOptions) {
 
 	opt = &GetOptions{}
+	if len(options) > 0 {
+		opt = options[0]
+	}
+
+	if opt.Context == nil {
+		opt.Context = m.context
+	}
+
+	return
+}
+
+// GetInfoOptions contains context.Context and options are used to specify
+// additional headers or options during GET Object Satat requests.
+type GetInfoOptions struct {
+	context.Context
+	StatObjectOptions
+}
+type StatObjectOptions minio.StatObjectOptions
+
+// NewGetStatOptions creates a new GetStatOptions object
+func (m *TeoS3) NewGetStatOptions() *GetInfoOptions { return &GetInfoOptions{} }
+
+// getGetInfoOptions returns GetInfoOptions created from input options arguments.
+func (m *TeoS3) getGetInfoOptions(options ...*GetInfoOptions) (
+	opt *GetInfoOptions) {
+
+	opt = &GetInfoOptions{}
 	if len(options) > 0 {
 		opt = options[0]
 	}
