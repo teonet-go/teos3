@@ -10,6 +10,7 @@ package teos3
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
@@ -267,6 +268,19 @@ func (m *TeoS3) ListBodyAr(prefix string, options ...*ListOptions) (
 func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
 	err error) {
 
+	// Get context from options argument
+	context := m.context
+	if len(options) > 0 {
+		context = options[0].Context
+	}
+
+	// Check if destination does not exist
+	_, err = m.GetInfo(destination, &GetInfoOptions{Context: context})
+	if err == nil {
+		err = fmt.Errorf("destination object already exist")
+		return
+	}
+
 	// Create copy source option
 	src := minio.CopySrcOptions{
 		Bucket: m.bucket,
@@ -277,12 +291,6 @@ func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
 	dst := minio.CopyDestOptions{
 		Bucket: m.bucket,
 		Object: destination,
-	}
-
-	// Get context from options argument
-	context := m.context
-	if len(options) > 0 {
-		context = options[0].Context
 	}
 
 	// Copy source object to destination object
