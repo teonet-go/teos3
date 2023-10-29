@@ -298,6 +298,14 @@ func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
 		return
 	}
 
+	// If destination is a folder than create new destination folder instead of
+	// copy source folder to destination because there is empty folder (all
+	// folder was processed in Recursive copy above) and CopyObject wiil return
+	// an error for copy folder
+	if m.isFolder(destination) {
+		return m.Set(destination, nil)
+	}
+
 	// Create copy source option
 	src := minio.CopySrcOptions{
 		Bucket: m.bucket,
@@ -312,6 +320,7 @@ func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
 
 	// Copy source object to destination object
 	_, err = m.con.CopyObject(context, dst, src)
+	fmt.Println("copy", dst, src, err)
 
 	return
 }
@@ -342,8 +351,7 @@ func (m *TeoS3) Move(source, destination string, options ...*CopyOptions) (
 func (m *TeoS3) foreach(context context.Context, key string,
 	calback func(key string) error) (done bool, err error) {
 
-	l := len(key)
-	if l > 0 && key[l-1] == '/' {
+	if m.isFolder(key) {
 		for k := range m.List(key, &ListOptions{Context: context}) {
 			if k == key {
 				continue
@@ -359,11 +367,16 @@ func (m *TeoS3) foreach(context context.Context, key string,
 }
 
 // Base returns the last element of path including trailing slash.
-func (m *TeoS3) fileBase(key string) string {
-	l := len(key)
-	var sufix string
-	if l > 0 && key[l-1] == '/' {
-		sufix = "/"
+func (m *TeoS3) fileBase(key string) (base string) {
+	base = filepath.Base(key)
+	if m.isFolder(key) {
+		base += "/"
 	}
-	return filepath.Base(key) + sufix
+	return base
+}
+
+// isFolder returns true if key is a folder
+func (m *TeoS3) isFolder(key string) bool {
+	l := len(key)
+	return l > 0 && key[l-1] == '/'
 }
