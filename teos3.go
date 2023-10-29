@@ -141,6 +141,19 @@ func (m *TeoS3) Del(key string, options ...*DelOptions) (err error) {
 	// Set options
 	opt := m.getDelOptions(options...)
 
+	// Perform a recursive delete of a folder
+	l := len(key)
+	if l > 0 && key[l-1] == '/' {
+		for k := range m.List(key, &ListOptions{Context: opt.Context}) {
+			if k == key {
+				continue
+			}
+			if err = m.Del(k, options...); err != nil {
+				return
+			}
+		}
+	}
+
 	return m.con.RemoveObject(opt.Context, m.bucket, key,
 		minio.RemoveObjectOptions(opt.DelObjectOptions))
 }
