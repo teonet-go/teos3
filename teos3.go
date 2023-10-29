@@ -142,16 +142,11 @@ func (m *TeoS3) Del(key string, options ...*DelOptions) (err error) {
 	opt := m.getDelOptions(options...)
 
 	// Perform a recursive delete of a folder
-	l := len(key)
-	if l > 0 && key[l-1] == '/' {
-		for k := range m.List(key, &ListOptions{Context: opt.Context}) {
-			if k == key {
-				continue
-			}
-			if err = m.Del(k, options...); err != nil {
-				return
-			}
-		}
+	err = m.foreach(opt.Context, key, func(key string) (err error) {
+		return m.Del(key, options...)
+	})
+	if err != nil {
+		return
 	}
 
 	return m.con.RemoveObject(opt.Context, m.bucket, key,
@@ -329,6 +324,26 @@ func (m *TeoS3) Move(source, destination string, options ...*CopyOptions) (
 
 	// Delete source object
 	err = m.Del(source, &DelOptions{Context: context})
+
+	return
+}
+
+// foreach calls callback function for all keys in folder key
+func (m *TeoS3) foreach(context context.Context, key string,
+	calback func(key string) error) (err error) {
+
+	l := len(key)
+	if l > 0 && key[l-1] == '/' {
+		for k := range m.List(key, &ListOptions{Context: context}) {
+			if k == key {
+				continue
+			}
+
+			if err = calback(k); err != nil {
+				return
+			}
+		}
+	}
 
 	return
 }
