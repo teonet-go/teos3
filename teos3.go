@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sync"
 
 	"github.com/minio/minio-go/v7"
@@ -22,11 +23,17 @@ const Version = "0.1.2"
 
 const teoS3bucket = "teos3"
 
-// TeoS3 methods receiver
+// TeoS3 objects data and methods receiver
 type TeoS3 struct {
 	context context.Context
 	con     *minio.Client
 	bucket  string
+}
+
+// MapData is data structure used in ListBody output
+type MapData struct {
+	Key   string `json:"key"`
+	Value []byte `json:"value"`
 }
 
 // Connect creates new cinnwction to S3 storage using accessKey, secretKey,
@@ -142,7 +149,7 @@ func (m *TeoS3) Del(key string, options ...*DelOptions) (err error) {
 	opt := m.getDelOptions(options...)
 
 	// Perform a recursive delete of a folder
-	err = m.foreach(opt.Context, key, func(key string) (err error) {
+	_, err = m.foreach(opt.Context, key, func(key string) (err error) {
 		return m.Del(key, options...)
 	})
 	if err != nil {
@@ -220,12 +227,6 @@ func (m *TeoS3) ListAr(prefix string, options ...*ListOptions) (
 	return
 }
 
-// Map data struct
-type MapData struct {
-	Key   string `json:"key"`
-	Value []byte `json:"value"`
-}
-
 // ListBody gets all keys and values in MapData struct by prefix asynchronously.
 func (m *TeoS3) ListBody(prefix string, options ...*ListOptions) (
 	mapDataChan chan MapData) {
@@ -283,9 +284,17 @@ func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
 	}
 
 	// Check if destination does not exist
-	_, err = m.GetInfo(destination, &GetInfoOptions{Context: context})
-	if err == nil {
+	if _, e := m.GetInfo(destination, &GetInfoOptions{Context: context}); e == nil {
 		err = fmt.Errorf("destination object already exist")
+		return
+	}
+
+	// Recursive copy
+	done, err := m.foreach(context, source, func(key string) (err error) {
+		name := m.fileBase(key)
+		return m.Copy(source+name, destination+name, options...)
+	})
+	if err != nil || done {
 		return
 	}
 
@@ -328,9 +337,10 @@ func (m *TeoS3) Move(source, destination string, options ...*CopyOptions) (
 	return
 }
 
-// foreach calls callback function for all keys in folder key
+// foreach calls callback function for all keys in folder key. The foreach
+// returns done = true if at list one callback function was processed.
 func (m *TeoS3) foreach(context context.Context, key string,
-	calback func(key string) error) (err error) {
+	calback func(key string) error) (done bool, err error) {
 
 	l := len(key)
 	if l > 0 && key[l-1] == '/' {
@@ -338,7 +348,7 @@ func (m *TeoS3) foreach(context context.Context, key string,
 			if k == key {
 				continue
 			}
-
+			done = true
 			if err = calback(k); err != nil {
 				return
 			}
@@ -346,4 +356,14 @@ func (m *TeoS3) foreach(context context.Context, key string,
 	}
 
 	return
+}
+
+// Base returns the last element of path including trailing slash.
+func (m *TeoS3) fileBase(key string) string {
+	l := len(key)
+	var sufix string
+	if l > 0 && key[l-1] == '/' {
+		sufix = "/"
+	}
+	return filepath.Base(key) + sufix
 }
