@@ -10,6 +10,7 @@ package teos3
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -22,6 +23,10 @@ import (
 const Version = "0.1.2"
 
 const teoS3bucket = "teos3"
+
+var ErrDestinationObjectAlreadyExists = errors.New(
+	"destination object already exists",
+)
 
 // TeoS3 objects data and methods receiver
 type TeoS3 struct {
@@ -285,7 +290,7 @@ func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
 
 	// Check if destination does not exist
 	if _, e := m.GetInfo(destination, &GetInfoOptions{Context: context}); e == nil {
-		err = fmt.Errorf("destination object already exist")
+		err = ErrDestinationObjectAlreadyExists
 		return
 	}
 
