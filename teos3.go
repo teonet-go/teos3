@@ -1,4 +1,4 @@
-// Copyright 2022-23 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
+// Copyright 2022-2023 Kirill Scherba <kirill@scherba.ru>.  All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,22 +10,35 @@ package teos3
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"path/filepath"
 	"sync"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Version = "0.1.1"
+const Version = "0.1.2"
 
 const teoS3bucket = "teos3"
 
-// TeoS3 methods receiver
+var ErrDestinationObjectAlreadyExists = errors.New(
+	"destination object already exists",
+)
+
+// TeoS3 objects data and methods receiver
 type TeoS3 struct {
 	context context.Context
 	con     *minio.Client
 	bucket  string
+}
+
+// MapData is data structure used in ListBody output
+type MapData struct {
+	Key   string `json:"key"`
+	Value []byte `json:"value"`
 }
 
 // Connect creates new cinnwction to S3 storage using accessKey, secretKey,
@@ -107,9 +120,10 @@ func (m *TeoS3) Get(key string, options ...*GetOptions) (
 	return
 }
 
-// Get map object by key. The options parameter may be omitted and than default
-// GetObjectOptions with context.Background and empty minio.SetObjectOptions
-// used. Returned object must be cloused with obj.Close() after use.
+// GetObject gets map object by key. The options parameter may be omitted and
+// than default GetObjectOptions with context.Background and empty minio.
+// SetObjectOptions used. Returned object must be cloused with obj.Close()
+// after use.
 func (m *TeoS3) GetObject(key string, options ...*GetOptions) (
 	*minio.Object, error) {
 
@@ -120,6 +134,17 @@ func (m *TeoS3) GetObject(key string, options ...*GetOptions) (
 		minio.GetObjectOptions(opt.GetObjectOptions))
 }
 
+// GetInfo fetchs metadata of an object by key.
+func (m *TeoS3) GetInfo(key string, options ...*GetInfoOptions) (
+	minio.ObjectInfo, error) {
+
+	// Set options
+	opt := m.getGetInfoOptions(options...)
+
+	return m.con.StatObject(opt.Context, m.bucket, key,
+		minio.StatObjectOptions(opt.StatObjectOptions))
+}
+
 // Del remove key from map by key. The options parameter may be omitted and than
 // default DelObjectOptions with context.Background and empty
 // minio.RemoveObjectOptions used.
@@ -127,6 +152,14 @@ func (m *TeoS3) Del(key string, options ...*DelOptions) (err error) {
 
 	// Set options
 	opt := m.getDelOptions(options...)
+
+	// Perform a recursive delete of a folder
+	_, err = m.foreach(opt.Context, key, func(key string) (err error) {
+		return m.Del(key, options...)
+	})
+	if err != nil {
+		return
+	}
 
 	return m.con.RemoveObject(opt.Context, m.bucket, key,
 		minio.RemoveObjectOptions(opt.DelObjectOptions))
@@ -199,12 +232,6 @@ func (m *TeoS3) ListAr(prefix string, options ...*ListOptions) (
 	return
 }
 
-// Map data struct
-type MapData struct {
-	Key   string `json:"key"`
-	Value []byte `json:"value"`
-}
-
 // ListBody gets all keys and values in MapData struct by prefix asynchronously.
 func (m *TeoS3) ListBody(prefix string, options ...*ListOptions) (
 	mapDataChan chan MapData) {
@@ -251,123 +278,110 @@ func (m *TeoS3) ListBodyAr(prefix string, options ...*ListOptions) (
 	return
 }
 
-// SetOptions contains context.Context and options specified by user for
-// Set requests
-type SetOptions struct {
-	context.Context
-	SetObjectOptions
-}
-type SetObjectOptions minio.PutObjectOptions
+// Copy copys source object to destination object
+func (m *TeoS3) Copy(source, destination string, options ...*CopyOptions) (
+	err error) {
 
-// NewSetOptions creates a new GetOptions object
-func (m *TeoS3) NewSetOptions() *SetOptions { return &SetOptions{} }
-
-// getSetOptions returns SetOptions created from input options arguments.
-func (m *TeoS3) getSetOptions(options ...*SetOptions) (
-	opt *SetOptions) {
-
-	opt = &SetOptions{}
+	// Get context from options argument
+	context := m.context
 	if len(options) > 0 {
-		opt = options[0]
+		context = options[0].Context
 	}
 
-	if opt.Context == nil {
-		opt.Context = m.context
+	// Check if destination does not exist
+	if _, e := m.GetInfo(destination, &GetInfoOptions{Context: context}); e == nil {
+		err = ErrDestinationObjectAlreadyExists
+		return
+	}
+
+	// Recursive copy
+	done, err := m.foreach(context, source, func(key string) (err error) {
+		name := m.fileBase(key)
+		return m.Copy(source+name, destination+name, options...)
+	})
+	if err != nil || done {
+		return
+	}
+
+	// If destination is a folder than create new destination folder instead of
+	// copy source folder to destination because there is empty folder (all
+	// folder was processed in Recursive copy above) and CopyObject wiil return
+	// an error for copy folder
+	if m.isFolder(destination) {
+		return m.Set(destination, nil)
+	}
+
+	// Create copy source option
+	src := minio.CopySrcOptions{
+		Bucket: m.bucket,
+		Object: source,
+	}
+
+	// Create copy destination option
+	dst := minio.CopyDestOptions{
+		Bucket: m.bucket,
+		Object: destination,
+	}
+
+	// Copy source object to destination object
+	_, err = m.con.CopyObject(context, dst, src)
+	fmt.Println("copy", dst, src, err)
+
+	return
+}
+
+// Move movess source object to destination object
+func (m *TeoS3) Move(source, destination string, options ...*CopyOptions) (
+	err error) {
+
+	// Copy source object to destination object
+	if err = m.Copy(source, destination, options...); err != nil {
+		return
+	}
+
+	// Get context from options arguments
+	context := m.context
+	if len(options) > 0 {
+		context = options[0].Context
+	}
+
+	// Delete source object
+	err = m.Del(source, &DelOptions{Context: context})
+
+	return
+}
+
+// foreach calls callback function for all keys in folder key. The foreach
+// returns done = true if at list one callback function was processed.
+func (m *TeoS3) foreach(context context.Context, key string,
+	calback func(key string) error) (done bool, err error) {
+
+	if m.isFolder(key) {
+		for k := range m.List(key, &ListOptions{Context: context}) {
+			if k == key {
+				continue
+			}
+			done = true
+			if err = calback(k); err != nil {
+				return
+			}
+		}
 	}
 
 	return
 }
 
-// GetOptions contains context.Context and options are used to specify
-// additional headers or options during GET requests.
-type GetOptions struct {
-	context.Context
-	GetObjectOptions
-}
-type GetObjectOptions minio.GetObjectOptions
-
-// NewGetOptions creates a new GetOptions object
-func (m *TeoS3) NewGetOptions() *GetOptions { return &GetOptions{} }
-
-// getGetOptions returns GetOptions created from input options arguments.
-func (m *TeoS3) getGetOptions(options ...*GetOptions) (
-	opt *GetOptions) {
-
-	opt = &GetOptions{}
-	if len(options) > 0 {
-		opt = options[0]
+// Base returns the last element of path including trailing slash.
+func (m *TeoS3) fileBase(key string) (base string) {
+	base = filepath.Base(key)
+	if m.isFolder(key) {
+		base += "/"
 	}
-
-	if opt.Context == nil {
-		opt.Context = m.context
-	}
-
-	return
+	return base
 }
 
-// DelOptions contains context.Context and options for Remove
-// requests.
-type DelOptions struct {
-	context.Context
-	DelObjectOptions
-}
-type DelObjectOptions minio.RemoveObjectOptions
-
-// NewDelOptions creates a new DelOptions object
-func (m *TeoS3) NewDelOptions() *DelOptions { return &DelOptions{} }
-
-// getDelOptions returns DelOptions created from input options arguments.
-func (m *TeoS3) getDelOptions(options ...*DelOptions) (
-	opt *DelOptions) {
-
-	opt = &DelOptions{}
-	if len(options) > 0 {
-		opt = options[0]
-	}
-
-	if opt.Context == nil {
-		opt.Context = m.context
-	}
-
-	return
-}
-
-// ListOptions contains context.Context and options for List requests.
-type ListOptions struct {
-	context.Context
-	ListObjectsOptions
-}
-type ListObjectsOptions minio.ListObjectsOptions
-
-// NewListOptions creates a new ListOptions object
-func (m *TeoS3) NewListOptions() *ListOptions { return &ListOptions{} }
-
-// SetMaxKeys sets MaxKeys list options value
-func (l *ListOptions) SetMaxKeys(maxKeys int) *ListOptions {
-	l.ListObjectsOptions.MaxKeys = maxKeys
-	return l
-}
-
-// SetStartAfter sets StartAfter list options value
-func (l *ListOptions) SetStartAfter(startAfter string) *ListOptions {
-	l.ListObjectsOptions.StartAfter = startAfter
-	return l
-}
-
-// getListOptions returns ListObjectsOptions created from input prefix and
-// options arguments.
-func (m *TeoS3) getListOptions(prefix string, options ...*ListOptions) (
-	opt *ListOptions) {
-
-	opt = &ListOptions{}
-	if len(options) > 0 {
-		opt = options[0]
-	}
-
-	if opt.Context == nil {
-		opt.Context = m.context
-	}
-	opt.Prefix = prefix
-
-	return
+// isFolder returns true if key is a folder
+func (m *TeoS3) isFolder(key string) bool {
+	l := len(key)
+	return l > 0 && key[l-1] == '/'
 }
